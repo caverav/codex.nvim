@@ -1,5 +1,4 @@
 local config = require("codex.config")
-local acp = require("codex.acp")
 local ui = require("codex.ui")
 local log = require("codex.log")
 local plan = require("codex.plan")
@@ -9,7 +8,6 @@ local M = {}
 
 function M.setup(opts)
   config.setup(opts or {})
-  ui.attach(acp)
   ui.on_submit = function(text)
     M.ask(text, { context_mode = config.options.prefer_embedded_context and "selection" or "file", embed_context = config.options.prefer_embedded_context })
   end
@@ -26,7 +24,7 @@ function M.ask(prompt_text, opts)
     return
   end
   local bufnr = opts and opts.bufnr or vim.api.nvim_get_current_buf()
-  ui.ask(acp, prompt_text, vim.tbl_extend("keep", opts or {}, {
+  ui.ask(prompt_text, vim.tbl_extend("keep", opts or {}, {
     bufnr = bufnr,
     context_mode = opts and opts.context_mode or "selection",
     embed_context = config.options.prefer_embedded_context,
@@ -34,14 +32,11 @@ function M.ask(prompt_text, opts)
 end
 
 function M.cancel()
-  acp.cancel()
-  ui.status("Cancellation requested")
+  ui.status("Cancellation requested (no-op in CLI mode)")
 end
 
 function M.restart()
-  acp.restart(function()
-    ui.status("Codex restarted")
-  end)
+  ui.status("Restart not required in CLI mode; rerun ask.")
 end
 
 function M.plan_menu()
@@ -57,47 +52,11 @@ function M.plan_menu()
 end
 
 function M.pick_mode()
-  local modes = acp.state().modes
-  if not modes or not modes.available_modes then
-    log.error("No modes available")
-    return
-  end
-  local items = {}
-  for _, m in ipairs(modes.available_modes) do
-    table.insert(items, { id = m.id or m.modeId or m.mode_id, name = m.name or m.id, desc = m.description })
-  end
-  vim.ui.select(items, {
-    prompt = "Select Codex mode",
-    format_item = function(item)
-      return string.format("%s — %s", item.name, item.desc or item.id)
-    end,
-  }, function(item)
-    if item then
-      acp.set_mode(item.id)
-      ui.status("Mode -> " .. item.name)
-    end
-  end)
+  log.error("Mode picking is only available in ACP mode.")
 end
 
 function M.pick_model()
-  local models = acp.state().models
-  local list = nil
-  if models and models.available_models then
-    list = models.available_models
-  elseif type(models) == "table" then
-    list = models
-  end
-  if not list or #list == 0 then
-    log.error("No models available")
-    return
-  end
-  vim.ui.select(list, { prompt = "Select Codex model" }, function(choice)
-    if choice then
-      local model_id = choice.id or choice.model_id or choice
-      acp.set_model(model_id)
-      ui.status("Model -> " .. tostring(model_id))
-    end
-  end)
+  log.error("Model picking is only available in ACP mode.")
 end
 
 function M.clear_annotations()
@@ -106,13 +65,7 @@ function M.clear_annotations()
 end
 
 function M.mcp_status()
-  local st = acp.state()
-  local mcp = st.mcp_capabilities or (st.agent_capabilities and st.agent_capabilities.mcpCapabilities)
-  if not mcp then
-    vim.notify("No MCP capabilities reported yet.", vim.log.levels.INFO)
-    return
-  end
-  vim.notify(vim.inspect(mcp), vim.log.levels.INFO)
+  vim.notify("MCP status not available in direct CLI mode.", vim.log.levels.INFO)
 end
 
 function M.diffs_preview()

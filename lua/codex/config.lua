@@ -8,7 +8,8 @@ local default_window = {
 }
 
 local defaults = {
-  cmd = { "codex-acp" }, -- fallback to {"codex", "acp"} if this fails
+  cmd = { "codex-acp" }, -- legacy ACP path (unused when cli_cmd is set)
+  cli_cmd = { "codex", "chat" }, -- direct Codex CLI invocation (default)
   cwd = nil,
   auth_method = nil,
   prefer_embedded_context = true,

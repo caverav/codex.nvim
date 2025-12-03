@@ -1,6 +1,6 @@
 # codex.nvim
 
-Neovim bridge for the Codex CLI (and `codex-acp`). It speaks the [Agent Client Protocol](https://agentclientprotocol.com) directly over stdio, streams Codex output into a sleek floating UI, and lets you push buffer context or selected code to Codex with one command.
+Neovim bridge for the Codex CLI. Streams Codex output into a sleek floating UI, and lets you push buffer context or selected code to Codex with one command. Uses the Codex CLI directly (no ACP required).
 
 ## Highlights
 - **Native ACP client** – JSON‑RPC v2 over newline frames; implements `initialize`, `authenticate`, `session/new`, `session/prompt`, `session/cancel`, `session/set_mode`, `fs/*`, and `session/request_permission`.
@@ -17,8 +17,7 @@ Use your favorite plugin manager. Example with `lazy.nvim`:
 {
   "caverav/codex.nvim",
   opts = {
-    cmd = { "codex-acp" },       -- or { "codex", "acp" }
-    auth_method = nil,           -- override: "codex-api-key", "openai-api-key", "chatgpt"
+    cli_cmd = { "codex", "review" }, -- good for code review; or { "codex", "chat" } for general chat
     prefer_embedded_context = true,
     window = { width = 0.5, height = 0.9, border = "rounded" },
   },
@@ -26,21 +25,18 @@ Use your favorite plugin manager. Example with `lazy.nvim`:
 ```
 
 Requirements:
-- `codex-acp` (from https://github.com/zed-industries/codex-acp) or Codex CLI with `codex acp` on your PATH.
+- Codex CLI on your PATH (`codex review` or `codex chat`).
 - Neovim >= 0.9 with `vim.json` and `vim.ui.select`.
 
 ## Usage
 
 ### Commands
-- `:CodexOpen` – open the floating chat view (auto-starts the agent).
+- `:CodexOpen` – open the floating chat view.
 - `:CodexAsk {prompt}` – send a one-off prompt using visual selection or current buffer as context.
-- `:CodexCancel` – send `session/cancel`.
-- `:CodexRestart` – restart the Codex agent process.
-- `:CodexMode` / `:CodexModel` – pick session mode or model.
+- `gf` inside the Codex window – jump to file paths mentioned in output (respects `path:line`).
 - `:CodexPlan` – inspect/edit the current plan statuses (local).
 - `:CodexDiffs` – preview captured diffs in a scratch window.
 - `:CodexClearAnnotations` – clear inline diff annotations.
-- `:CodexMcp` – show MCP status (placeholder).
 
 ### Lua API
 
@@ -48,7 +44,7 @@ Requirements:
 local codex = require("codex")
 
 codex.setup({
-  cmd = { "codex-acp" },
+  cli_cmd = { "codex", "review" },
   cwd = vim.loop.cwd(),
 })
 
@@ -64,32 +60,15 @@ codex.ask("Refactor this function", {
 - **Selection**: visual selection is embedded as a `resource` block (`type: resource` with `text` + `uri`).
 - **File**: current file is referenced as a `resourceLink` (`uri: file://...`), optionally embedded if `prefer_embedded_context = true`.
 
-### Terminals
-- Advertises `terminal/*` support to the agent.
-- Agent-driven commands run via `jobstart`; output is streamed to the Codex UI and served back through `terminal/output`.
-- Kill/Release/Wait are implemented; output truncation honors `outputByteLimit` when provided.
-
-### Authentication
-The plugin tries to auto-pick a method after `initialize`:
-1. `auth_method` option if set.
-2. `CODEX_API_KEY` env → `"codex-api-key"`.
-3. `OPENAI_API_KEY` env → `"openai-api-key"`.
-4. Fall back to the first method offered by the agent (usually `"chatgpt"`).
-
-## Design notes
-- **Transport**: newline-delimited JSON-RPC 2.0 (no `Content-Length` headers). Each message contains `jsonrpc: "2.0"`.
-- **Capabilities**: advertises `fs.read_text_file`/`write_text_file` when the agent runs locally, `terminal = false` by default.
-- **Permissions**: `session/request_permission` is mapped to `vim.ui.select`; the choice is cached for the tool call id.
-- **UI**: uses a dedicated scratch buffer for the transcript and a second buffer for the input line. Colors are namespaced under `Codex*` highlight groups; override them in your colorscheme as desired.
-
-## Debugging
-- Run with `:lua require('codex').toggle_debug()` to mirror raw ACP messages into `:messages`.
-- If the agent dies, `:CodexRestart` respawns the process and re-runs `initialize`/`new_session`.
+### CLI mode
+- Streams Codex CLI stdout line-by-line into the floating buffer.
+- Uses `cli_cmd` (default `{ "codex", "chat" }`, recommended `{ "codex", "review" }` for code reviews).
+- Writes the user prompt to stdin, then closes it.
+- Paths in output are underlined; press `gf` on them to jump to the file (line numbers respected).
 
 ## Roadmap
-- Plan sync back to agent when supported.
-- MCP server discovery UI.
-- Rich diff annotations (hunks, virtual lines).
+- Full Codex/ACP dual mode with selectable backend.
+- Richer diff annotations (hunks, virtual lines) and patch application helpers.
 
 ## License
 MIT

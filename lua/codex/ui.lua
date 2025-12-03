@@ -4,6 +4,7 @@ local context = require("codex.context")
 local terminal = require("codex.terminal")
 local plan = require("codex.plan")
 local annotate = require("codex.annotate")
+local cli = require("codex.cli")
 
 local M = {}
 
@@ -37,6 +38,26 @@ local function ensure_highlights()
   highlights_applied = true
 end
 
+local function highlight_paths(line_nr, text)
+  local patterns = {
+    "file://[%w%._%-%/%~%+]+:%d+",
+    "file://[%w%._%-%/%~%+]+",
+    "[%w%._%-%/%~%+]+:%d+",
+    "@[%w%._%-%/%~%+]+",
+  }
+  for _, pat in ipairs(patterns) do
+    local start = 1
+    while true do
+      local s, e = string.find(text, pat, start)
+      if not s then
+        break
+      end
+      vim.api.nvim_buf_add_highlight(state.buf, -1, "Underlined", line_nr, s - 1, e)
+      start = e + 1
+    end
+  end
+end
+
 local function append_line(prefix, text, hl)
   if not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then
     return
@@ -54,6 +75,9 @@ local function append_line(prefix, text, hl)
     for i = 0, #lines - 1 do
       vim.api.nvim_buf_add_highlight(state.buf, -1, hl, line_count + i, 0, -1)
     end
+  end
+  for i = 0, #lines - 1 do
+    highlight_paths(line_count + i, lines[i + 1])
   end
   if state.win and vim.api.nvim_win_is_valid(state.win) then
     vim.api.nvim_win_set_cursor(state.win, { vim.api.nvim_buf_line_count(state.buf), 0 })
@@ -195,6 +219,9 @@ local function ensure_windows()
     vim.api.nvim_set_current_win(state.input_win)
     vim.cmd("startinsert")
   end
+  vim.keymap.set("n", "gf", function()
+    M.goto_file_under_cursor()
+  end, { buffer = state.buf, silent = true })
 end
 
 function M.open()
@@ -207,56 +234,66 @@ function M.set_source_buf(bufnr)
   end
 end
 
-function M.attach(acp)
-  acp.on("session_update", function(params)
-    if not params or not params.update then
-      return
-    end
-    handle_session_update(params.update)
-  end)
-  acp.on("error", function(err)
-    append_line(" ERR ", vim.inspect(err), "CodexError")
-  end)
-  acp.on("ready", function()
-    append_line(" READY ", "Session started", "CodexHeader")
-  end)
-  terminal.on("output", function(ev)
-    local chunk = table.concat(ev.chunk or {}, "\n")
-    if chunk ~= "" then
-      append_line(" TERM ", chunk, "CodexTool")
-    end
-  end)
-  terminal.on("exit", function(ev)
-    local status = ev.status or {}
-    append_line(
-      " TERM ",
-      ("exit code=%s signal=%s"):format(tostring(status.exit_code), tostring(status.signal)),
-      "CodexHeader"
-    )
-  end)
+-- ACP hooks removed for CLI mode; terminal events handled elsewhere
+
+local function normalize_path(str)
+  if str:sub(1, 7) == "file://" then
+    str = str:sub(8)
+  end
+  if str:sub(1, 1) == "@" then
+    str = str:sub(2)
+  end
+  local path, line = str:match("(.+):(%d+)$")
+  return path or str, tonumber(line or "1")
 end
 
-function M.ask(acp, prompt_text, opts)
+function M.goto_file_under_cursor()
+  if not state.buf or not vim.api.nvim_buf_is_valid(state.buf) then
+    return
+  end
+  local row = vim.api.nvim_win_get_cursor(state.win)[1]
+  local line = vim.api.nvim_buf_get_lines(state.buf, row - 1, row, false)[1] or ""
+  local ccol = vim.api.nvim_win_get_cursor(state.win)[2] + 1
+  local candidates = {}
+  for token in line:gmatch("%S+") do
+    table.insert(candidates, token)
+  end
+  for _, tok in ipairs(candidates) do
+    if tok:find("/") or tok:find("file://") or tok:find("@") then
+      local path, lnum = normalize_path(tok)
+      local full = path
+      if vim.fn.filereadable(full) ~= 1 then
+        full = vim.fs.joinpath(config.options.cwd or vim.loop.cwd(), path)
+      end
+      if vim.fn.filereadable(full) == 1 then
+        vim.cmd("edit " .. vim.fn.fnameescape(full))
+        vim.api.nvim_win_set_cursor(0, { lnum or 1, 0 })
+        return
+      end
+    end
+  end
+  vim.notify("No path found on line", vim.log.levels.INFO)
+end
+
+function M.ask(prompt_text, opts)
   if opts and opts.bufnr then
     M.set_source_buf(opts.bufnr)
   end
   ensure_windows()
-  append_line(" YOU ", prompt_text, "CodexUser")
-  local source_buf = opts and opts.bufnr or state.source_buf or vim.api.nvim_get_current_buf()
-  local blocks = context.build_prompt(prompt_text, {
+  local prompt_with_context = context.build_cli_prompt(prompt_text, {
+    bufnr = opts and opts.bufnr or state.source_buf or vim.api.nvim_get_current_buf(),
     context_mode = opts and opts.context_mode or "selection",
     embed_context = opts and opts.embed_context,
-    bufnr = source_buf,
-    fallback_to_file = true,
   })
-  acp.prompt(blocks, function(err, res)
-    if err then
-      append_line(" ERR ", vim.inspect(err), "CodexError")
-    elseif res and (res.stop_reason or res.stopReason) then
-      local reason = res.stop_reason or res.stopReason
-      append_line(" DONE ", "stop_reason: " .. tostring(reason), "CodexHeader")
-    end
-  end)
+  append_line(" YOU ", prompt_with_context, "CodexUser")
+  cli.run(prompt_with_context, { cwd = config.options.cwd }, {
+    on_line = function(line)
+      append_line(" ▸ ", line, "CodexAgent")
+    end,
+    on_exit = function(code, signal)
+      append_line(" DONE ", string.format("exit %s signal %s", tostring(code), tostring(signal)), "CodexHeader")
+    end,
+  })
 end
 
 function M.status(msg)

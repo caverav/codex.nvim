@@ -90,4 +90,58 @@ function M.build_prompt(prompt_text, opts)
   return blocks
 end
 
+local function read_file(path)
+  local ok, data = pcall(vim.fn.readfile, path)
+  if not ok or not data then
+    return nil
+  end
+  return table.concat(data, "\n")
+end
+
+function M.build_cli_prompt(prompt_text, opts)
+  opts = opts or {}
+  local bufnr = opts.bufnr or 0
+  local context_mode = opts.context_mode or "selection"
+  local embed = opts.embed_context ~= false
+  local text = prompt_text
+
+  local function append_block(title, body)
+    text = text
+      .. "\n\n"
+      .. title
+      .. "\n```\n"
+      .. body
+      .. "\n```"
+  end
+
+  if context_mode == "selection" then
+    local selected, _, _ = get_visual_selection(bufnr)
+    if selected and selected ~= "" then
+      local uri = current_file_uri(nil, bufnr) or "selection://"
+      if embed then
+        append_block("Context (" .. uri .. ")", selected)
+      else
+        text = text .. "\n\nContext: " .. uri
+      end
+    end
+  end
+
+  if context_mode == "file" then
+    local path = vim.api.nvim_buf_get_name(bufnr)
+    if path ~= "" then
+      local uri = "file://" .. path
+      if embed then
+        local content = read_file(path)
+        if content and content ~= "" then
+          append_block("Context (" .. uri .. ")", content)
+        end
+      else
+        text = text .. "\n\nContext: " .. uri
+      end
+    end
+  end
+
+  return text
+end
+
 return M
