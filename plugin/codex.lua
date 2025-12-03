@@ -21,3 +21,23 @@ end, { desc = "Restart Codex agent process" })
 vim.api.nvim_create_user_command("CodexDebug", function()
   codex.toggle_debug()
 end, { desc = "Toggle Codex debug logging" })
+
+vim.api.nvim_create_user_command("CodexPlan", function()
+  codex.plan_menu()
+end, { desc = "Inspect and edit Codex plan entries" })
+
+vim.api.nvim_create_user_command("CodexMode", function()
+  codex.pick_mode()
+end, { desc = "Pick Codex session mode" })
+
+vim.api.nvim_create_user_command("CodexModel", function()
+  codex.pick_model()
+end, { desc = "Pick Codex model" })
+
+vim.api.nvim_create_user_command("CodexClearAnnotations", function()
+  codex.clear_annotations()
+end, { desc = "Clear Codex diff annotations" })
+
+vim.api.nvim_create_user_command("CodexMcp", function()
+  codex.mcp_status()
+end, { desc = "Show MCP status (from session)" })

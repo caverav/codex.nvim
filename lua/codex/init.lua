@@ -2,6 +2,8 @@ local config = require("codex.config")
 local acp = require("codex.acp")
 local ui = require("codex.ui")
 local log = require("codex.log")
+local plan = require("codex.plan")
+local annotate = require("codex.annotate")
 
 local M = {}
 
@@ -40,6 +42,77 @@ function M.restart()
   acp.restart(function()
     ui.status("Codex restarted")
   end)
+end
+
+function M.plan_menu()
+  plan.pick_entry(function(idx)
+    local statuses = { "pending", "in_progress", "completed" }
+    vim.ui.select(statuses, { prompt = "Set status" }, function(choice)
+      if choice then
+        plan.set_status(idx, choice)
+        ui.status(("Plan %d -> %s"):format(idx, choice))
+      end
+    end)
+  end)
+end
+
+function M.pick_mode()
+  local modes = acp.state().modes
+  if not modes or not modes.available_modes then
+    log.error("No modes available")
+    return
+  end
+  local items = {}
+  for _, m in ipairs(modes.available_modes) do
+    table.insert(items, { id = m.id or m.modeId or m.mode_id, name = m.name or m.id, desc = m.description })
+  end
+  vim.ui.select(items, {
+    prompt = "Select Codex mode",
+    format_item = function(item)
+      return string.format("%s — %s", item.name, item.desc or item.id)
+    end,
+  }, function(item)
+    if item then
+      acp.set_mode(item.id)
+      ui.status("Mode -> " .. item.name)
+    end
+  end)
+end
+
+function M.pick_model()
+  local models = acp.state().models
+  local list = nil
+  if models and models.available_models then
+    list = models.available_models
+  elseif type(models) == "table" then
+    list = models
+  end
+  if not list or #list == 0 then
+    log.error("No models available")
+    return
+  end
+  vim.ui.select(list, { prompt = "Select Codex model" }, function(choice)
+    if choice then
+      local model_id = choice.id or choice.model_id or choice
+      acp.set_model(model_id)
+      ui.status("Model -> " .. tostring(model_id))
+    end
+  end)
+end
+
+function M.clear_annotations()
+  annotate.clear()
+  ui.status("Cleared Codex diff annotations")
+end
+
+function M.mcp_status()
+  local st = acp.state()
+  local mcp = st.agent_capabilities and st.agent_capabilities.mcp
+  if not mcp then
+    vim.notify("No MCP servers tracked in this client yet.", vim.log.levels.INFO)
+    return
+  end
+  vim.notify(vim.inspect(mcp), vim.log.levels.INFO)
 end
 
 function M.toggle_debug()

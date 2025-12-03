@@ -38,6 +38,10 @@ Once pushed to GitHub (`caverav/codex.nvim`), it can be required directly by laz
 - `:CodexAsk {prompt}` – send a one-off prompt using visual selection or current buffer as context.
 - `:CodexCancel` – send `session/cancel`.
 - `:CodexRestart` – restart the Codex agent process.
+- `:CodexMode` / `:CodexModel` – pick session mode or model.
+- `:CodexPlan` – inspect/edit the current plan statuses (local).
+- `:CodexClearAnnotations` – clear inline diff annotations.
+- `:CodexMcp` – show MCP status (placeholder).
 
 ### Lua API
 
@@ -61,6 +65,11 @@ codex.ask("Refactor this function", {
 - **Selection**: visual selection is embedded as a `resource` block (`type: resource` with `text` + `uri`).
 - **File**: current file is referenced as a `resourceLink` (`uri: file://...`), optionally embedded if `prefer_embedded_context = true`.
 
+### Terminals
+- Advertises `terminal/*` support to the agent.
+- Agent-driven commands run via `jobstart`; output is streamed to the Codex UI and served back through `terminal/output`.
+- Kill/Release/Wait are implemented; output truncation honors `outputByteLimit` when provided.
+
 ### Authentication
 The plugin tries to auto-pick a method after `initialize`:
 1. `auth_method` option if set.
@@ -79,9 +88,9 @@ The plugin tries to auto-pick a method after `initialize`:
 - If the agent dies, `:CodexRestart` respawns the process and re-runs `initialize`/`new_session`.
 
 ## Roadmap
-- Terminal streaming (`terminal/*`).
-- Plan editing and MCP server discovery UI.
-- Inline annotations in buffers for tool call diffs.
+- Plan sync back to agent when supported.
+- MCP server discovery UI.
+- Rich diff annotations (hunks, virtual lines).
 
 ## License
 MIT

@@ -1,6 +1,9 @@
 local config = require("codex.config")
 local log = require("codex.log")
 local context = require("codex.context")
+local terminal = require("codex.terminal")
+local plan = require("codex.plan")
+local annotate = require("codex.annotate")
 
 local M = {}
 
@@ -61,6 +64,7 @@ local function render_plan(update)
   if not update.entries then
     return
   end
+  plan.set(update.entries)
   append_line(" PLAN ", "updated:", "CodexPlan")
   for idx, entry in ipairs(update.entries) do
     local badge = string.format(" %d. ", idx)
@@ -81,6 +85,7 @@ local function render_tool_call(update)
         append_line("   ", block.text, "CodexTool")
       elseif block.type == "diff" and block.diff and block.diff.newText then
         append_line("   ", block.diff.newText, "CodexTool")
+        annotate.annotate_diff(block.diff)
       end
     end
   end
@@ -214,6 +219,20 @@ function M.attach(acp)
   end)
   acp.on("ready", function()
     append_line(" READY ", "Session started", "CodexHeader")
+  end)
+  terminal.on("output", function(ev)
+    local chunk = table.concat(ev.chunk or {}, "\n")
+    if chunk ~= "" then
+      append_line(" TERM ", chunk, "CodexTool")
+    end
+  end)
+  terminal.on("exit", function(ev)
+    local status = ev.status or {}
+    append_line(
+      " TERM ",
+      ("exit code=%s signal=%s"):format(tostring(status.exit_code), tostring(status.signal)),
+      "CodexHeader"
+    )
   end)
 end
 

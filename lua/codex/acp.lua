@@ -1,6 +1,7 @@
 local config = require("codex.config")
 local log = require("codex.log")
 local Transport = require("codex.transport")
+local terminal = require("codex.terminal")
 
 local M = {}
 
@@ -154,6 +155,52 @@ local function start_transport()
     return {}
   end)
 
+  state.transport:on_request("terminal/create", function(params)
+    local id, err = terminal.create(params)
+    if not id then
+      return nil, { code = -32000, message = err }
+    end
+    return { terminalId = id }
+  end)
+
+  state.transport:on_request("terminal/output", function(params)
+    local res, err = terminal.output(params.terminal_id or params.terminalId)
+    if not res then
+      return nil, { code = -32000, message = err }
+    end
+    return {
+      output = res.output,
+      truncated = res.truncated,
+      exitStatus = res.exit_status,
+    }
+  end)
+
+  state.transport:on_request("terminal/kill", function(params)
+    local res, err = terminal.kill(params.terminal_id or params.terminalId)
+    if not res then
+      return nil, { code = -32000, message = err }
+    end
+    return res
+  end)
+
+  state.transport:on_request("terminal/release", function(params)
+    local res, err = terminal.release(params.terminal_id or params.terminalId)
+    if not res then
+      return nil, { code = -32000, message = err }
+    end
+    return res
+  end)
+
+  state.transport:on_request("terminal/wait_for_exit", function(params)
+    local res, err = terminal.wait_for_exit(params.terminal_id or params.terminalId)
+    if not res then
+      return nil, { code = -32000, message = err }
+    end
+    return {
+      exitStatus = res,
+    }
+  end)
+
   local ok = state.transport:start()
   if not ok then
     return false
@@ -228,8 +275,8 @@ end
 local function initialize(cb)
   local capabilities = {
     fs = { readTextFile = true, writeTextFile = true },
-    terminal = false,
-    _meta = { terminal_output = false },
+    terminal = true,
+    _meta = { terminal_output = true },
   }
 
   with_request("initialize", {
