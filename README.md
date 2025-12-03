@@ -29,8 +29,6 @@ Requirements:
 - `codex-acp` (from https://github.com/zed-industries/codex-acp) or Codex CLI with `codex acp` on your PATH.
 - Neovim >= 0.9 with `vim.json` and `vim.ui.select`.
 
-Once pushed to GitHub (`caverav/codex.nvim`), it can be required directly by lazy.nvim or any other manager.
-
 ## Usage
 
 ### Commands
