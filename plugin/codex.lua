@@ -1,0 +1,23 @@
+local codex = require("codex")
+
+codex.setup()
+
+vim.api.nvim_create_user_command("CodexOpen", function()
+  codex.open()
+end, { desc = "Open Codex chat UI" })
+
+vim.api.nvim_create_user_command("CodexAsk", function(opts)
+  codex.ask(opts.args, { context_mode = "selection" })
+end, { nargs = "*", desc = "Send a prompt to Codex using selection/file context" })
+
+vim.api.nvim_create_user_command("CodexCancel", function()
+  codex.cancel()
+end, { desc = "Cancel the current Codex turn" })
+
+vim.api.nvim_create_user_command("CodexRestart", function()
+  codex.restart()
+end, { desc = "Restart Codex agent process" })
+
+vim.api.nvim_create_user_command("CodexDebug", function()
+  codex.toggle_debug()
+end, { desc = "Toggle Codex debug logging" })

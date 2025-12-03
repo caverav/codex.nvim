@@ -1,0 +1,10 @@
+.DS_Store
+.idea
+.vscode
+*.swp
+*.swo
+*.log
+.npm/
+tmp/
+tags
+lua_modules/
