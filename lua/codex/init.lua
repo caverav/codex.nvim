@@ -107,12 +107,43 @@ end
 
 function M.mcp_status()
   local st = acp.state()
-  local mcp = st.agent_capabilities and st.agent_capabilities.mcp
+  local mcp = st.mcp_capabilities or (st.agent_capabilities and st.agent_capabilities.mcpCapabilities)
   if not mcp then
-    vim.notify("No MCP servers tracked in this client yet.", vim.log.levels.INFO)
+    vim.notify("No MCP capabilities reported yet.", vim.log.levels.INFO)
     return
   end
   vim.notify(vim.inspect(mcp), vim.log.levels.INFO)
+end
+
+function M.diffs_preview()
+  local diffs = annotate.list()
+  local buf = vim.api.nvim_create_buf(false, true)
+  local lines = {}
+  for path, d in pairs(diffs) do
+    table.insert(lines, "==== " .. path .. " ====")
+    local old_text = d.old_text or (d.diff and d.diff.old_text) or ""
+    local new_text = d.new_text or d.newText or (d.diff and (d.diff.new_text or d.diff.newText)) or ""
+    table.insert(lines, "--- old")
+    vim.list_extend(lines, vim.split(old_text, "\n", { plain = true }))
+    table.insert(lines, "+++ new")
+    vim.list_extend(lines, vim.split(new_text, "\n", { plain = true }))
+    table.insert(lines, "")
+  end
+  if #lines == 0 then
+    lines = { "No diffs captured yet." }
+  end
+  vim.api.nvim_buf_set_lines(buf, 0, -1, false, lines)
+  vim.bo[buf].filetype = "diff"
+  vim.api.nvim_open_win(buf, true, {
+    relative = "editor",
+    width = math.floor(vim.o.columns * 0.6),
+    height = math.floor(vim.o.lines * 0.7),
+    row = math.floor(vim.o.lines * 0.15),
+    col = math.floor(vim.o.columns * 0.2),
+    style = "minimal",
+    border = "rounded",
+    title = " Codex diffs ",
+  })
 end
 
 function M.toggle_debug()

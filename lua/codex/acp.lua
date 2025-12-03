@@ -35,6 +35,7 @@ local state = {
   initialized = false,
   session_id = nil,
   agent_capabilities = nil,
+  mcp_capabilities = nil,
   auth_methods = {},
   models = nil,
   modes = nil,
@@ -294,6 +295,7 @@ local function initialize(cb)
     end
     state.initialized = true
     state.agent_capabilities = res.agentCapabilities or res.agent_capabilities
+    state.mcp_capabilities = state.agent_capabilities and (state.agent_capabilities.mcpCapabilities or state.agent_capabilities.mcp_capabilities)
     state.auth_methods = res.authMethods or res.auth_methods or {}
     maybe_authenticate(function()
       new_session(cb)

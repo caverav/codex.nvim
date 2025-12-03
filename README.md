@@ -40,6 +40,7 @@ Once pushed to GitHub (`caverav/codex.nvim`), it can be required directly by laz
 - `:CodexRestart` – restart the Codex agent process.
 - `:CodexMode` / `:CodexModel` – pick session mode or model.
 - `:CodexPlan` – inspect/edit the current plan statuses (local).
+- `:CodexDiffs` – preview captured diffs in a scratch window.
 - `:CodexClearAnnotations` – clear inline diff annotations.
 - `:CodexMcp` – show MCP status (placeholder).
 

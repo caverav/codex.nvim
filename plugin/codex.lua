@@ -41,3 +41,7 @@ end, { desc = "Clear Codex diff annotations" })
 vim.api.nvim_create_user_command("CodexMcp", function()
   codex.mcp_status()
 end, { desc = "Show MCP status (from session)" })
+
+vim.api.nvim_create_user_command("CodexDiffs", function()
+  codex.diffs_preview()
+end, { desc = "Preview captured Codex diffs" })
