@@ -23,7 +23,9 @@ local function spawn(cmd, cwd, on_line, on_exit)
     cwd = cwd,
   }, function(code, signal)
     if on_exit then
-      on_exit(code, signal)
+      vim.schedule(function()
+        on_exit(code, signal)
+      end)
     end
     if handle and not handle:is_closing() then
       handle:close()
@@ -69,7 +71,9 @@ local function spawn(cmd, cwd, on_line, on_exit)
       local line = job.buf:sub(1, nl - 1)
       job.buf = job.buf:sub(nl + 1)
       if on_line then
-        on_line(line)
+        vim.schedule(function()
+          on_line(line)
+        end)
       end
     end
   end)
