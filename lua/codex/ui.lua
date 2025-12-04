@@ -275,6 +275,46 @@ function M.goto_file_under_cursor()
   vim.notify("No path found on line", vim.log.levels.INFO)
 end
 
+function M.open_terminal()
+  ensure_highlights()
+  local opts = config.options.window
+  local width = math.floor(vim.o.columns * (opts.width or 0.6))
+  local height = math.floor(vim.o.lines * (opts.height or 0.6))
+  local row = math.floor((vim.o.lines - height) / 2)
+  local col = math.floor((vim.o.columns - width) / 2)
+  local buf = vim.api.nvim_create_buf(false, true)
+  local win = vim.api.nvim_open_win(buf, true, {
+    relative = "editor",
+    row = row,
+    col = col,
+    width = width,
+    height = height,
+    style = "minimal",
+    border = opts.border or "rounded",
+    title = " Codex CLI ",
+  })
+  local cmd = config.options.cli_cmd or { "codex", "chat" }
+  local term_opts = { cwd = config.options.cwd or vim.loop.cwd() }
+  if config.options.cli_env then
+    term_opts.env = config.options.cli_env
+  end
+  vim.fn.termopen(cmd, term_opts)
+  vim.bo[buf].filetype = "codexterm"
+  vim.keymap.set("n", "gf", function()
+    local curwin = vim.api.nvim_get_current_win()
+    local curbuf = vim.api.nvim_win_get_buf(curwin)
+    local old_buf = state.buf
+    local old_win = state.win
+    state.buf = curbuf
+    state.win = curwin
+    M.goto_file_under_cursor()
+    state.buf = old_buf
+    state.win = old_win
+  end, { buffer = buf, silent = true })
+  vim.keymap.set("t", "<C-g>", [[<C-\><C-n>gf]], { buffer = buf, silent = true })
+  return buf, win
+end
+
 function M.ask(prompt_text, opts)
   if opts and opts.bufnr then
     M.set_source_buf(opts.bufnr)

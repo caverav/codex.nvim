@@ -33,6 +33,7 @@ Requirements:
 ### Commands
 - `:CodexOpen` – open the floating chat view.
 - `:CodexAsk {prompt}` – send a one-off prompt using visual selection or current buffer as context.
+- `:CodexTerminal` – open a floating terminal running your `cli_cmd`; press `<C-\\><C-n>` then `gf` on a path to jump.
 - `gf` inside the Codex window – jump to file paths mentioned in output (respects `path:line`).
 - `:CodexPlan` – inspect/edit the current plan statuses (local).
 - `:CodexDiffs` – preview captured diffs in a scratch window.

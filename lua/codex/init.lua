@@ -99,6 +99,10 @@ function M.diffs_preview()
   })
 end
 
+function M.open_terminal()
+  ui.open_terminal()
+end
+
 function M.toggle_debug()
   config.options.debug = not config.options.debug
   ui.status("Debug " .. (config.options.debug and "on" or "off"))

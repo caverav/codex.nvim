@@ -22,6 +22,10 @@ vim.api.nvim_create_user_command("CodexDebug", function()
   codex.toggle_debug()
 end, { desc = "Toggle Codex debug logging" })
 
+vim.api.nvim_create_user_command("CodexTerminal", function()
+  codex.open_terminal()
+end, { desc = "Open a floating terminal with Codex CLI" })
+
 vim.api.nvim_create_user_command("CodexPlan", function()
   codex.plan_menu()
 end, { desc = "Inspect and edit Codex plan entries" })
