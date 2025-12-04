@@ -290,6 +290,9 @@ function M.ask(prompt_text, opts)
     on_line = function(line)
       append_line(" ▸ ", line, "CodexAgent")
     end,
+    on_stderr = function(line)
+      append_line(" ERR ", line, "CodexError")
+    end,
     on_exit = function(code, signal)
       append_line(" DONE ", string.format("exit %s signal %s", tostring(code), tostring(signal)), "CodexHeader")
     end,

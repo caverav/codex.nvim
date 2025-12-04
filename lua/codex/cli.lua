@@ -91,22 +91,29 @@ local function spawn(cmd, cwd, on_line, on_exit)
   return job
 end
 
----Run Codex CLI with streaming output. Writes the prompt to stdin, then closes it.
+---Run Codex CLI with streaming output. Writes the prompt to stdin (or arg), then closes stdin.
 ---@param prompt string
----@param opts table|nil {cwd, cmd}
+---@param opts table|nil {cwd, cmd, prompt_arg}
 ---@param handlers table|nil {on_line=function(line), on_exit=function(code, signal)}
 function M.run(prompt, opts, handlers)
   opts = opts or {}
   handlers = handlers or {}
-  local cmd = opts.cmd or config.options.cli_cmd or { "codex", "chat" }
+  local cmd = vim.deepcopy(opts.cmd or config.options.cli_cmd or { "codex", "chat" })
+  local prompt_arg = opts.prompt_arg or config.options.cli_prompt_arg
   local cwd = opts.cwd or config.options.cwd or vim.loop.cwd()
+  if prompt_arg then
+    table.insert(cmd, prompt_arg)
+    table.insert(cmd, prompt)
+  end
   local job, err = spawn(cmd, cwd, handlers.on_line, handlers.on_exit)
   if not job then
     log.error("Failed to start codex CLI: " .. tostring(err))
     return
   end
-  job.stdin:write(prompt .. "\n")
-  job.stdin:shutdown()
+  if not prompt_arg then
+    job.stdin:write(prompt .. "\n")
+    job.stdin:shutdown()
+  end
 end
 
 return M
