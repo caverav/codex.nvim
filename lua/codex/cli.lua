@@ -12,7 +12,7 @@ local config = require("codex.config")
 
 local M = {}
 
-local function spawn(cmd, cwd, on_line, on_exit)
+local function spawn(cmd, cwd, env, on_line, on_exit, on_stderr)
   local stdin = uv.new_pipe(false)
   local stdout = uv.new_pipe(false)
   local stderr = uv.new_pipe(false)
@@ -21,6 +21,7 @@ local function spawn(cmd, cwd, on_line, on_exit)
     args = { unpack(cmd, 2) },
     stdio = { stdin, stdout, stderr },
     cwd = cwd,
+    env = env,
   }, function(code, signal)
     if on_exit then
       vim.schedule(function()
@@ -84,7 +85,13 @@ local function spawn(cmd, cwd, on_line, on_exit)
       return
     end
     if chunk then
-      log.debug("codex stderr", chunk)
+      if on_stderr then
+        vim.schedule(function()
+          on_stderr(chunk)
+        end)
+      else
+        log.debug("codex stderr", chunk)
+      end
     end
   end)
 
@@ -93,19 +100,20 @@ end
 
 ---Run Codex CLI with streaming output. Writes the prompt to stdin (or arg), then closes stdin.
 ---@param prompt string
----@param opts table|nil {cwd, cmd, prompt_arg}
----@param handlers table|nil {on_line=function(line), on_exit=function(code, signal)}
+---@param opts table|nil {cwd, cmd, prompt_arg, env}
+---@param handlers table|nil {on_line=function(line), on_exit=function(code, signal), on_stderr=function(line)}
 function M.run(prompt, opts, handlers)
   opts = opts or {}
   handlers = handlers or {}
   local cmd = vim.deepcopy(opts.cmd or config.options.cli_cmd or { "codex", "chat" })
   local prompt_arg = opts.prompt_arg or config.options.cli_prompt_arg
   local cwd = opts.cwd or config.options.cwd or vim.loop.cwd()
+  local env = opts.env or config.options.cli_env
   if prompt_arg then
     table.insert(cmd, prompt_arg)
     table.insert(cmd, prompt)
   end
-  local job, err = spawn(cmd, cwd, handlers.on_line, handlers.on_exit)
+  local job, err = spawn(cmd, cwd, env, handlers.on_line, handlers.on_exit, handlers.on_stderr)
   if not job then
     log.error("Failed to start codex CLI: " .. tostring(err))
     return
